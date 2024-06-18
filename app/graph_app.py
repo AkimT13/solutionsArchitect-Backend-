@@ -104,7 +104,7 @@ workflow.add_node("Financial_Data_Agent", financial_data_node)
 workflow.add_node("Solutions_Architect" , solutions_architect_node)
 workflow.add_node("supervisor", supervisor_chain)
 
-# Define edges
+
 for member in members:
     workflow.add_edge(member, "supervisor")
 
@@ -116,7 +116,7 @@ workflow.set_entry_point("supervisor")
 
 graph = workflow.compile()
 
-# Run the graph
+
 def run_graph(input_message):
     response = graph.invoke({
         "messages": [HumanMessage(content=input_message)]
