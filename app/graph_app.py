@@ -8,15 +8,15 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import StateGraph, END
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
-from typing import Annotated, Any, Dict, List, Optional, Sequence, TypedDict
-import gradio as gr
+from typing import Annotated, Sequence, TypedDict
+
 from dotenv import load_dotenv
-# Set environment variables
+# load env
 load_dotenv();
-# Initialize model
+# llm
 llm = ChatOpenAI(model="gpt-3.5-turbo")
 
-# Define custom tools
+#tools
 @tool("general_facts_search", return_direct=False)
 def general_facts_search(query: str) -> str:
     """Searches the internet about general information about the company"""
@@ -37,7 +37,7 @@ def generate_solution(general_info: str, financial_info: str, prompt:str) -> str
 
 tools = [general_facts_search, financial_data_search, generate_solution]
 
-# Helper function for creating agents
+# create agents wi this
 def create_agent(llm: ChatOpenAI, tools: list, system_prompt: str):
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
@@ -48,12 +48,12 @@ def create_agent(llm: ChatOpenAI, tools: list, system_prompt: str):
     executor = AgentExecutor(agent=agent, tools=tools)
     return executor
 
-# Define agent nodes
+# nodes for graph
 def agent_node(state, agent, name):
     result = agent.invoke(state)
     return {"messages": [HumanMessage(content=result["output"], name=name)]}
 
-# Create Agent Supervisor
+# supervisor agent
 members = ["General_Facts_Agent", "Financial_Data_Agent", "Solutions_Architect"]
 system_prompt = (
     "As a supervisor, your role is to oversee a dialogue between these"
@@ -63,6 +63,7 @@ system_prompt = (
     " indicate with 'FINISH'."
 )
 
+#stole this from somewherw
 options = ["FINISH"] + members
 function_def = {
     "name": "route",
@@ -81,9 +82,10 @@ prompt = ChatPromptTemplate.from_messages([
     ("system", "Given the conversation above, who should act next? Or should we FINISH? Select one of: {options}"),
 ]).partial(options=str(options), members=", ".join(members))
 
+#langchain chain
 supervisor_chain = (prompt | llm.bind_functions(functions=[function_def], function_call="route") | JsonOutputFunctionsParser())
 
-# Define the Agent State and Graph
+# state is a typed dict
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     next: str
@@ -104,7 +106,7 @@ workflow.add_node("Financial_Data_Agent", financial_data_node)
 workflow.add_node("Solutions_Architect" , solutions_architect_node)
 workflow.add_node("supervisor", supervisor_chain)
 
-
+#connect all agents to supervisor
 for member in members:
     workflow.add_edge(member, "supervisor")
 
